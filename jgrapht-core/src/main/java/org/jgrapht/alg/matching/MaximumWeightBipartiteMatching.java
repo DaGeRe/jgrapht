@@ -201,28 +201,7 @@ public class MaximumWeightBipartiteMatching<V, E>
 
         // relax all edges out of a1
         V a1 = a;
-        for (E e1 : graph.edgesOf(a1)) {
-            if (!matching.contains(e1)) {
-                V b1 = Graphs.getOppositeVertex(graph, e1, a1);
-                BigDecimal db1 = dist.get(a1).add(pot.get(a1)).add(pot.get(b1)).subtract(
-                    BigDecimal.valueOf(graph.getEdgeWeight(e1)));
-
-                if (pred.get(b1) == null) {
-                    dist.put(b1, db1);
-                    pred.put(b1, e1);
-                    reachedB.push(b1);
-
-                    AddressableHeap.Handle<BigDecimal, V> node = heap.insert(db1, b1);
-                    nodeInHeap.put(b1, node);
-                } else {
-                    if (comparator.compare(db1, dist.get(b1)) < 0) {
-                        dist.put(b1, db1);
-                        pred.put(b1, e1);
-                        nodeInHeap.get(b1).decreaseKey(db1);
-                    }
-                }
-            }
-        }
+        relaxAllEdges(reachedB, a1);
 
         while (true) {
             /*
@@ -260,43 +239,12 @@ public class MaximumWeightBipartiteMatching<V, E>
                         minA = db.add(pot.get(a1));
                     }
 
-                    // relax all edges out of a1
-                    for (E e1 : graph.edgesOf(a1)) {
-                        if (!matching.contains(e1)) {
-                            V b1 = Graphs.getOppositeVertex(graph, e1, a1);
-                            BigDecimal db1 =
-                                dist.get(a1).add(pot.get(a1)).add(pot.get(b1)).subtract(
-                                    BigDecimal.valueOf(graph.getEdgeWeight(e1)));
-                            if (pred.get(b1) == null) {
-                                dist.put(b1, db1);
-                                pred.put(b1, e1);
-                                reachedB.push(b1);
-
-                                AddressableHeap.Handle<BigDecimal, V> node = heap.insert(db1, b1);
-                                nodeInHeap.put(b1, node);
-                            } else {
-                                if (comparator.compare(db1, dist.get(b1)) < 0) {
-                                    dist.put(b1, db1);
-                                    pred.put(b1, e1);
-                                    nodeInHeap.get(b1).decreaseKey(db1);
-                                }
-                            }
-                        }
-                    }
+                    relaxAllEdges(reachedB, a1);
                 }
             }
         }
 
-        // augment: potential update and re-initialization
-        while (!reachedA.isEmpty()) {
-            V v = reachedA.pop();
-            pred.put(v, null);
-            BigDecimal potChange = delta.subtract(dist.get(v));
-            if (comparator.compare(potChange, BigDecimal.ZERO) <= 0) {
-                continue;
-            }
-            pot.put(v, pot.get(v).subtract(potChange));
-        }
+        augment(delta, reachedA);
 
         while (!reachedB.isEmpty()) {
             V v = reachedB.pop();
@@ -311,6 +259,45 @@ public class MaximumWeightBipartiteMatching<V, E>
             pot.put(v, pot.get(v).add(potChange));
         }
     }
+
+   private void augment(BigDecimal delta, Deque<V> reachedA) {
+      // augment: potential update and re-initialization
+        while (!reachedA.isEmpty()) {
+            V v = reachedA.pop();
+            pred.put(v, null);
+            BigDecimal potChange = delta.subtract(dist.get(v));
+            if (comparator.compare(potChange, BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            pot.put(v, pot.get(v).subtract(potChange));
+        }
+   }
+
+   private void relaxAllEdges(Deque<V> reachedB, V a1) {
+      // relax all edges out of a1
+        for (E e1 : graph.edgesOf(a1)) {
+            if (!matching.contains(e1)) {
+                V b1 = Graphs.getOppositeVertex(graph, e1, a1);
+                BigDecimal db1 =
+                    dist.get(a1).add(pot.get(a1)).add(pot.get(b1)).subtract(
+                        BigDecimal.valueOf(graph.getEdgeWeight(e1)));
+                if (pred.get(b1) == null) {
+                    dist.put(b1, db1);
+                    pred.put(b1, e1);
+                    reachedB.push(b1);
+
+                    AddressableHeap.Handle<BigDecimal, V> node = heap.insert(db1, b1);
+                    nodeInHeap.put(b1, node);
+                } else {
+                    if (comparator.compare(db1, dist.get(b1)) < 0) {
+                        dist.put(b1, db1);
+                        pred.put(b1, e1);
+                        nodeInHeap.get(b1).decreaseKey(db1);
+                    }
+                }
+            }
+        }
+   }
 
     private void augmentPathTo(V v)
     {
